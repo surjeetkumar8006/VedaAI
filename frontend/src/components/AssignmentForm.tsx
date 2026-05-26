@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { useAssessmentStore } from '../store/useAssessmentStore';
 import { FileUp, Sparkles, AlertCircle } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
 interface FormErrors {
   title?: string;
   topic?: string;
@@ -114,7 +116,7 @@ export default function AssignmentForm({ onSubmitSuccess }: { onSubmitSuccess: (
         formData.append('file', store.file);
       }
 
-      const response = await fetch('http://localhost:5000/api/assignments', {
+      const response = await fetch(`${API_URL}/api/assignments`, {
         method: 'POST',
         body: formData,
       });

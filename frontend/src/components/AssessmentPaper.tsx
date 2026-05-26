@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Assignment, Section, Question } from '../store/useAssessmentStore';
 import { Download, Printer, RotateCw, Save, Check, X, ArrowLeft, Edit2 } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
 interface AssessmentPaperProps {
   assignment: Assignment;
   onBack: () => void;
@@ -69,7 +71,7 @@ export default function AssessmentPaper({ assignment, onBack, onRegenerate }: As
   const handleSaveEdits = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/assignments/${assignment._id}/questions`, {
+      const response = await fetch(`${API_URL}/api/assignments/${assignment._id}/questions`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sections }),
@@ -99,7 +101,7 @@ export default function AssessmentPaper({ assignment, onBack, onRegenerate }: As
   const getDownloadUrl = () => {
     if (!pdfPath) return '#';
     if (pdfPath.startsWith('http')) return pdfPath;
-    return `http://localhost:5000${pdfPath}`;
+    return `${API_URL}${pdfPath}`;
   };
 
   return (

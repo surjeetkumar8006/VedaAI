@@ -9,6 +9,8 @@ import { useAssessmentStore } from '../store/useAssessmentStore';
 import { io, Socket } from 'socket.io-client';
 import { Sparkles, GraduationCap, FileText, CheckSquare, Layers } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
 export default function Home() {
   const store = useAssessmentStore();
   const [activeAssignmentId, setActiveAssignmentId] = useState<string | null>(null);
@@ -23,7 +25,7 @@ export default function Home() {
         console.log(`🔌 Initializing Socket.io connection for assignment ${targetId}...`);
         
         // Connect to backend WebSocket server
-        socket = io('http://localhost:5000');
+        socket = io(API_URL);
 
         socket.on('connect', () => {
           console.log('🔌 Connected to websocket stream server.');
@@ -41,7 +43,7 @@ export default function Home() {
           
           if (data.status === 'completed') {
             // Fetch final assessment document
-            fetch(`http://localhost:5000/api/assignments/${data.assignmentId}`)
+            fetch(`${API_URL}/api/assignments/${data.assignmentId}`)
               .then((res: Response) => res.json())
               .then((result: { success: boolean; assignment: any }) => {
                 if (result.success) {
@@ -95,7 +97,7 @@ export default function Home() {
     store.startGeneration(id);
     
     try {
-      const response = await fetch(`http://localhost:5000/api/assignments/${id}/regenerate`, {
+      const response = await fetch(`${API_URL}/api/assignments/${id}/regenerate`, {
         method: 'POST',
       });
       const data = await response.json();
