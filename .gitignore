@@ -1,0 +1,36 @@
+# Node / NPM dependencies
+node_modules/
+
+# Next.js build directories
+.next/
+out/
+
+# Backend compiled output
+dist/
+
+# Local Environment configuration files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS system files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Editor configurations
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Uploads & generated files in backend
+backend/public/uploads/*
+!backend/public/uploads/.gitkeep
+backend/public/pdfs/*
+!backend/public/pdfs/.gitkeep
