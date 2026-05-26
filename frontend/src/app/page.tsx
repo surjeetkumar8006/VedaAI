@@ -24,8 +24,8 @@ export default function Home() {
       if (targetId) {
         console.log(`🔌 Initializing Socket.io connection for assignment ${targetId}...`);
         
-        // Connect to backend WebSocket server
-        socket = io(API_URL);
+        // Connect to backend WebSocket server using direct websockets to prevent proxy disconnect loops
+        socket = io(API_URL, { transports: ['websocket'] });
 
         socket.on('connect', () => {
           console.log('🔌 Connected to websocket stream server.');
