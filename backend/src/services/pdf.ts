@@ -15,10 +15,11 @@ export const generateAssignmentPDF = (assignment: IAssignment): Promise<string> 
       const fileName = `assessment-${assignment._id}.pdf`;
       const filePath = path.join(pdfDir, fileName);
 
-      // Create a PDF Document with margins
+      // Create a PDF Document with margins and page buffering enabled
       const doc = new PDFDocument({
         size: 'A4',
         margins: { top: 50, bottom: 50, left: 50, right: 50 },
+        bufferPages: true,
       });
 
       // Stream it to the file
@@ -158,6 +159,27 @@ export const generateAssignmentPDF = (assignment: IAssignment): Promise<string> 
 
         doc.moveDown(1.5);
       });
+
+      // --- Examiner Signature Block (on last page) ---
+      doc.moveDown(2.5);
+      if (doc.y > 680) {
+        doc.addPage();
+      }
+      const sigY = doc.y;
+      doc.strokeColor('#94a3b8').lineWidth(1).moveTo(375, sigY + 20).lineTo(545, sigY + 20).stroke();
+      doc.fontSize(9).fillColor('#475569')
+        .text('EXAMINER SIGNATURE', 375, sigY + 25, { width: 170, align: 'center' });
+
+      // --- Global Page Numbering Footer ---
+      const range = doc.bufferedPageRange();
+      for (let i = 0; i < range.count; i++) {
+        doc.switchToPage(i);
+        doc.fontSize(8).fillColor('#64748b');
+        doc.text(`Page ${i + 1} of ${range.count}`, 50, 785, {
+          align: 'center',
+          width: 495,
+        });
+      }
 
       // End Document
       doc.end();

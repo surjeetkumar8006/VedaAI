@@ -7,6 +7,8 @@ import {
   getAssignmentById,
   regenerateAssignment,
   updateAssignmentQuestions,
+  getAssignments,
+  deleteAssignment,
 } from '../controllers/assignment';
 
 const router = Router();
@@ -50,9 +52,11 @@ const upload = multer({
 });
 
 // Routes
+router.get('/', getAssignments);
 router.post('/', upload.single('file'), createAssignment);
 router.get('/:id', getAssignmentById);
 router.post('/:id/regenerate', regenerateAssignment);
 router.put('/:id/questions', updateAssignmentQuestions);
+router.delete('/:id', deleteAssignment);
 
 export default router;

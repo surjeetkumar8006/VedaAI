@@ -21,11 +21,26 @@ export default function AssignmentForm({ onSubmitSuccess }: { onSubmitSuccess: (
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Predefined subjects for quick filling
+  const subjects = [
+    { id: 'science', label: 'Science 🔬', title: 'Biology Mid-Term Exam', topic: 'Plant Photosynthesis & Cell Respiration', instructions: 'Ensure questions test light-dependent vs light-independent reactions. Suitable for Grade 10.' },
+    { id: 'math', label: 'Math 📐', title: 'Quadratic Equations Quiz', topic: 'Quadratic Formula and Factorization', instructions: 'Include scenario-based word problems.' },
+    { id: 'programming', label: 'Tech/Code 💻', title: 'REST API & Systems Architecture Exam', topic: 'Node.js Event Loop, Websockets, and API standards', instructions: 'Focus on asynchronous patterns and API routing logic.' },
+    { id: 'literature', label: 'Literature 📚', title: 'Shakespearean Drama Analysis', topic: 'Macbeth themes, motifs, and character analysis', instructions: 'Focus on literary terminology and textual analysis.' },
+    { id: 'history', label: 'History 🏛️', title: 'World War II Historical Review', topic: 'Causes, major battles, and consequences of WW2', instructions: 'Essay questions should evaluate analytical depth.' }
+  ];
+
+  const handleSubjectSelect = (sub: typeof subjects[0]) => {
+    store.setField('selectedSubject', sub.id);
+    store.setField('title', sub.title);
+    store.setField('topic', sub.topic);
+    store.setField('additionalInstructions', sub.instructions);
+  };
+
   // Toggle question type selection
   const handleTypeChange = (type: string) => {
     const current = [...store.questionTypes];
     if (current.includes(type)) {
-      // Keep at least one type checked
       if (current.length > 1) {
         store.setField('questionTypes', current.filter((t) => t !== type));
       }
@@ -103,6 +118,11 @@ export default function AssignmentForm({ onSubmitSuccess }: { onSubmitSuccess: (
     store.clearLogs();
     
     try {
+      // Build instructions incorporating custom tone
+      const fullInstructions = store.additionalInstructions 
+        ? `${store.additionalInstructions}\n[Note: Generate this assessment in an "${store.assessmentTone.toUpperCase()}" cognitive style.]`
+        : `[Note: Generate this assessment in an "${store.assessmentTone.toUpperCase()}" cognitive style.]`;
+
       // Build FormData payload
       const formData = new FormData();
       formData.append('title', store.title);
@@ -111,7 +131,7 @@ export default function AssignmentForm({ onSubmitSuccess }: { onSubmitSuccess: (
       formData.append('questionTypes', JSON.stringify(store.questionTypes));
       formData.append('totalQuestions', store.totalQuestions.toString());
       formData.append('totalMarks', store.totalMarks.toString());
-      formData.append('additionalInstructions', store.additionalInstructions);
+      formData.append('additionalInstructions', fullInstructions);
       if (store.file) {
         formData.append('file', store.file);
       }
@@ -144,6 +164,32 @@ export default function AssignmentForm({ onSubmitSuccess }: { onSubmitSuccess: (
       <div style={styles.formHeader}>
         <h2 style={styles.title}>Assessment Planner</h2>
         <p style={styles.subtitle}>Configure details to generate a structured AI question paper</p>
+      </div>
+
+      {/* Subject Presets Grid */}
+      <div className="form-group" style={{ marginBottom: '16px' }}>
+        <label className="form-label">Subject Presets (Quick Fill)</label>
+        <div style={styles.presetsGrid}>
+          {subjects.map((sub) => (
+            <button
+              key={sub.id}
+              type="button"
+              onClick={() => handleSubjectSelect(sub)}
+              className="btn-secondary"
+              style={{
+                padding: '6px 12px',
+                fontSize: '12px',
+                borderRadius: '20px',
+                border: store.selectedSubject === sub.id ? '1px solid var(--accent-primary)' : '1px solid var(--border-glass)',
+                background: store.selectedSubject === sub.id ? 'rgba(56, 189, 248, 0.1)' : 'var(--bg-tertiary)',
+                color: store.selectedSubject === sub.id ? 'var(--accent-primary)' : 'var(--text-primary)',
+                justifyContent: 'center',
+              }}
+            >
+              {sub.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Title */}
@@ -225,6 +271,37 @@ export default function AssignmentForm({ onSubmitSuccess }: { onSubmitSuccess: (
         {errors.questionTypes && <span style={styles.errorText}><AlertCircle size={12} /> {errors.questionTypes}</span>}
       </div>
 
+      {/* Cognitive Tone */}
+      <div className="form-group">
+        <label className="form-label">Assessment Cognitive Tone</label>
+        <div style={styles.toneGrid}>
+          {[
+            { id: 'formal', label: 'Formal Academic' },
+            { id: 'scenario', label: 'Scenario-based' },
+            { id: 'creative', label: 'Problem-solving' }
+          ].map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => store.setField('assessmentTone', t.id as any)}
+              className="btn-secondary"
+              style={{
+                padding: '8px',
+                fontSize: '12px',
+                borderRadius: '8px',
+                border: store.assessmentTone === t.id ? '1px solid var(--accent-primary)' : '1px solid var(--border-glass)',
+                background: store.assessmentTone === t.id ? 'rgba(56, 189, 248, 0.08)' : 'var(--bg-tertiary)',
+                color: store.assessmentTone === t.id ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                fontWeight: store.assessmentTone === t.id ? 600 : 400,
+                justifyContent: 'center',
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div style={styles.grid2}>
         {/* Total Questions */}
         <div className="form-group">
@@ -282,30 +359,42 @@ export default function AssignmentForm({ onSubmitSuccess }: { onSubmitSuccess: (
 
 const styles = {
   formContainer: {
-    padding: '30px',
+    padding: '24px',
     display: 'flex',
     flexDirection: 'column' as const,
     gap: '4px',
   },
   formHeader: {
-    marginBottom: '20px',
+    marginBottom: '14px',
   },
   title: {
-    fontSize: '22px',
+    fontSize: '20px',
     fontWeight: 700,
-    marginBottom: '6px',
+    marginBottom: '4px',
     background: 'linear-gradient(135deg, #ffffff, #94a3b8)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
   },
   subtitle: {
-    fontSize: '13px',
+    fontSize: '12px',
     color: 'var(--text-secondary)',
+  },
+  presetsGrid: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: '8px',
+    marginTop: '6px',
   },
   grid2: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
-    gap: '20px',
+    gap: '16px',
+  },
+  toneGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr 1fr',
+    gap: '8px',
+    marginTop: '4px',
   },
   fileUploadBtn: {
     background: 'rgba(15, 23, 42, 0.6)',

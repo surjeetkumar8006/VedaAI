@@ -217,3 +217,63 @@ export const updateAssignmentQuestions = async (req: Request, res: Response) => 
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+/**
+ * Get all assessments
+ */
+export const getAssignments = async (req: Request, res: Response) => {
+  try {
+    const assignments = await Assignment.find().sort({ createdAt: -1 });
+    return res.status(200).json({ success: true, assignments });
+  } catch (error: any) {
+    console.error('Error in getAssignments controller:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Delete assessment by ID and clean up files
+ */
+export const deleteAssignment = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const assignment = await Assignment.findById(id);
+    if (!assignment) {
+      return res.status(404).json({ success: false, message: 'Assessment not found.' });
+    }
+
+    // Delete associated PDF if it exists
+    if (assignment.pdfPath) {
+      // Remove leading slash if any
+      const relativePath = assignment.pdfPath.startsWith('/') ? assignment.pdfPath.substring(1) : assignment.pdfPath;
+      const pdfFilePath = path.join(__dirname, '..', '..', 'public', relativePath.replace('public/', ''));
+      
+      if (fs.existsSync(pdfFilePath)) {
+        try {
+          fs.unlinkSync(pdfFilePath);
+        } catch (fileErr) {
+          console.warn('⚠️ PDF file could not be deleted from disk:', fileErr);
+        }
+      }
+    }
+
+    // Delete associated upload if it exists
+    if (assignment.uploadedFileName) {
+      const uploadFilePath = path.join(__dirname, '..', '..', 'public', 'uploads', assignment.uploadedFileName);
+      if (fs.existsSync(uploadFilePath)) {
+        try {
+          fs.unlinkSync(uploadFilePath);
+        } catch (fileErr) {
+          console.warn('⚠️ Uploaded file could not be deleted from disk:', fileErr);
+        }
+      }
+    }
+
+    await Assignment.findByIdAndDelete(id);
+
+    return res.status(200).json({ success: true, message: 'Assessment deleted successfully.' });
+  } catch (error: any) {
+    console.error('Error in deleteAssignment controller:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};

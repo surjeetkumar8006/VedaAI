@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
 export interface Question {
   _id?: string;
   questionText: string;
@@ -44,6 +46,8 @@ interface AssessmentFormState {
   totalMarks: number;
   additionalInstructions: string;
   file: File | null;
+  selectedSubject: string;
+  assessmentTone: 'formal' | 'scenario' | 'creative';
 }
 
 interface AssessmentStore extends AssessmentFormState {
@@ -54,6 +58,7 @@ interface AssessmentStore extends AssessmentFormState {
   statusMessage: string;
   logs: string[];
   currentAssignment: Assignment | null;
+  library: Assignment[];
 
   // Actions
   setField: <K extends keyof AssessmentFormState>(key: K, value: AssessmentFormState[K]) => void;
@@ -67,6 +72,10 @@ interface AssessmentStore extends AssessmentFormState {
   clearLogs: () => void;
   setAssignment: (assignment: Assignment | null) => void;
   setStatus: (status: any) => void;
+
+  // Library actions
+  fetchLibrary: () => Promise<void>;
+  deleteAssignment: (id: string) => Promise<void>;
 }
 
 const initialFormState: AssessmentFormState = {
@@ -78,9 +87,11 @@ const initialFormState: AssessmentFormState = {
   totalMarks: 25,
   additionalInstructions: '',
   file: null,
+  selectedSubject: '',
+  assessmentTone: 'formal',
 };
 
-export const useAssessmentStore = create<AssessmentStore>((set) => ({
+export const useAssessmentStore = create<AssessmentStore>((set, get) => ({
   ...initialFormState,
   jobId: null,
   status: 'idle',
@@ -88,6 +99,7 @@ export const useAssessmentStore = create<AssessmentStore>((set) => ({
   statusMessage: '',
   logs: [],
   currentAssignment: null,
+  library: [],
 
   setField: (key, value) => set({ [key]: value }),
   setFile: (file) => set({ file }),
@@ -128,4 +140,34 @@ export const useAssessmentStore = create<AssessmentStore>((set) => ({
   clearLogs: () => set({ logs: [] }),
   setAssignment: (assignment) => set({ currentAssignment: assignment }),
   setStatus: (status) => set({ status }),
+
+  fetchLibrary: async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/assignments`);
+      const data = await response.json();
+      if (response.ok && data.success) {
+        set({ library: data.assignments });
+      }
+    } catch (error) {
+      console.error('Failed to fetch library:', error);
+    }
+  },
+
+  deleteAssignment: async (id) => {
+    try {
+      const response = await fetch(`${API_URL}/api/assignments/${id}`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        set((state) => ({
+          library: state.library.filter((item) => item._id !== id),
+          currentAssignment: state.currentAssignment?._id === id ? null : state.currentAssignment,
+          status: state.currentAssignment?._id === id ? 'idle' : state.status,
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to delete assignment:', error);
+    }
+  },
 }));

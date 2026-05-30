@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Assignment, Section, Question } from '../store/useAssessmentStore';
-import { Download, Printer, RotateCw, Save, Check, X, ArrowLeft, Edit2 } from 'lucide-react';
+import { Download, Printer, RotateCw, Save, Check, ArrowLeft, Trash2, Plus, AlertCircle } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -19,6 +19,9 @@ export default function AssessmentPaper({ assignment, onBack, onRegenerate }: As
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [pdfPath, setPdfPath] = useState(assignment.pdfPath);
 
+  // Examiner metadata
+  const [examinerName, setExaminerName] = useState('Dr. Sharma');
+
   // Student details states (controlled inputs)
   const [studentName, setStudentName] = useState('');
   const [studentRoll, setStudentRoll] = useState('');
@@ -31,6 +34,18 @@ export default function AssessmentPaper({ assignment, onBack, onRegenerate }: As
     }
     setPdfPath(assignment.pdfPath);
   }, [assignment]);
+
+  // Recalculate values dynamically from live editor state
+  let currentTotalQuestions = 0;
+  let currentTotalMarks = 0;
+  sections.forEach((sec) => {
+    if (sec.questions) {
+      currentTotalQuestions += sec.questions.length;
+      sec.questions.forEach((q) => {
+        currentTotalMarks += Number(q.marks || 0);
+      });
+    }
+  });
 
   // Handle text input edits for questions
   const handleQuestionTextChange = (secIdx: number, qIdx: number, newText: string) => {
@@ -65,6 +80,29 @@ export default function AssessmentPaper({ assignment, onBack, onRegenerate }: As
       setSections(updated);
       setIsEditing(true);
     }
+  };
+
+  // Add Question inline
+  const handleAddQuestion = (secIdx: number, type: 'MCQ' | 'SHORT' | 'LONG' | 'TRUE_FALSE') => {
+    const updated = [...sections];
+    const newQ: Question = {
+      questionText: 'Enter your custom question here...',
+      type,
+      difficulty: 'medium',
+      marks: type === 'MCQ' || type === 'TRUE_FALSE' ? 2 : type === 'SHORT' ? 5 : 10,
+      options: type === 'MCQ' ? ['Option A', 'Option B', 'Option C', 'Option D'] : undefined
+    };
+    updated[secIdx].questions.push(newQ);
+    setSections(updated);
+    setIsEditing(true);
+  };
+
+  // Delete Question inline
+  const handleDeleteQuestion = (secIdx: number, qIdx: number) => {
+    const updated = [...sections];
+    updated[secIdx].questions.splice(qIdx, 1);
+    setSections(updated);
+    setIsEditing(true);
   };
 
   // Save changes to backend
@@ -127,7 +165,7 @@ export default function AssessmentPaper({ assignment, onBack, onRegenerate }: As
 
           {saveSuccess && (
             <div style={styles.successBadge}>
-              <Check size={12} /> Saved!
+              <Check size={12} /> Saved PDF!
             </div>
           )}
 
@@ -148,12 +186,19 @@ export default function AssessmentPaper({ assignment, onBack, onRegenerate }: As
         </div>
       </div>
 
+      {isEditing && (
+        <div style={styles.alertBanner} className="no-print">
+          <AlertCircle size={16} />
+          <span>You have unsaved edits. Click "Save Edits" to sync changes and update the download PDF.</span>
+        </div>
+      )}
+
       {/* Exam Paper Sheet */}
       <div className="exam-container">
         {/* Header section */}
         <div className="exam-header">
           <h1>{assignment.title.toUpperCase()}</h1>
-          <p style={{ fontSize: '12px', fontStyle: 'italic', marginTop: '4px', color: '#64748b' }}>
+          <p style={{ fontSize: '11px', fontStyle: 'italic', marginTop: '4px', color: '#64748b' }}>
             VedaAI Academic Assessment Engine
           </p>
         </div>
@@ -162,8 +207,8 @@ export default function AssessmentPaper({ assignment, onBack, onRegenerate }: As
         <div className="exam-meta-grid">
           <div>TOPIC/SUBJECT: <span style={{ fontWeight: 'normal' }}>{assignment.topic}</span></div>
           <div style={{ textAlign: 'right' }}>DATE: <span style={{ fontWeight: 'normal' }}>{new Date(assignment.dueDate).toLocaleDateString()}</span></div>
-          <div>MAX MARKS: <span style={{ fontWeight: 'normal' }}>{assignment.totalMarks} Marks</span></div>
-          <div style={{ textAlign: 'right' }}>TOTAL QUESTIONS: <span style={{ fontWeight: 'normal' }}>{assignment.totalQuestions}</span></div>
+          <div>MAX MARKS: <span style={{ fontWeight: 'normal' }}>{currentTotalMarks} Marks</span></div>
+          <div style={{ textAlign: 'right' }}>TOTAL QUESTIONS: <span style={{ fontWeight: 'normal' }}>{currentTotalQuestions}</span></div>
         </div>
 
         {/* Student identification table */}
@@ -218,7 +263,7 @@ export default function AssessmentPaper({ assignment, onBack, onRegenerate }: As
             </div>
 
             {/* List questions in section */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               {sec.questions.map((q, qIdx) => (
                 <div key={q._id || qIdx} className="exam-question-item">
                   <div className="exam-question-header">
@@ -259,6 +304,17 @@ export default function AssessmentPaper({ assignment, onBack, onRegenerate }: As
                         style={styles.marksInput}
                       />
                       <span style={{ fontSize: '11px', fontWeight: 'bold' }}>Marks]</span>
+
+                      {/* Delete button (no-print) */}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteQuestion(secIdx, qIdx)}
+                        style={styles.deleteQBtn}
+                        className="no-print"
+                        title="Delete Question"
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </span>
                   </div>
 
@@ -291,8 +347,50 @@ export default function AssessmentPaper({ assignment, onBack, onRegenerate }: As
                 </div>
               ))}
             </div>
+
+            {/* Add Question inline button bar (no-print) */}
+            <div style={styles.addQuestionRow} className="no-print">
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>Add custom question:</span>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {[
+                  { id: 'MCQ', label: 'MCQ' },
+                  { id: 'SHORT', label: 'Short' },
+                  { id: 'LONG', label: 'Essay' },
+                  { id: 'TRUE_FALSE', label: 'True/False' }
+                ].map((typeOpt) => (
+                  <button
+                    key={typeOpt.id}
+                    type="button"
+                    onClick={() => handleAddQuestion(secIdx, typeOpt.id as any)}
+                    style={styles.addQBtn}
+                  >
+                    <Plus size={10} />
+                    {typeOpt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         ))}
+
+        {/* Examiner Signature & footer area */}
+        <div style={styles.signatureBlock}>
+          <div className="no-print" style={styles.examinerInputBlock}>
+            <label style={{ fontSize: '10px', fontWeight: 'bold', color: '#475569', textTransform: 'uppercase' }}>Examiner Name</label>
+            <input
+              type="text"
+              value={examinerName}
+              onChange={(e) => setExaminerName(e.target.value)}
+              style={styles.examinerInput}
+            />
+          </div>
+          <div style={styles.sigLineContainer}>
+            <div style={styles.sigLine} />
+            <div style={styles.sigText}>
+              {examinerName.toUpperCase()}<br />EXAMINER SIGNATURE
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -302,11 +400,11 @@ const styles = {
   container: {
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: '24px',
+    gap: '16px',
     paddingBottom: '60px',
   },
   actionBar: {
-    padding: '16px 24px',
+    padding: '14px 24px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -332,7 +430,7 @@ const styles = {
     background: 'var(--bg-tertiary)',
     color: 'var(--text-primary)',
     border: '1px solid var(--border-glass)',
-    padding: '8px 16px',
+    padding: '8px 14px',
     borderRadius: '8px',
     fontSize: '13px',
     fontWeight: 500,
@@ -345,7 +443,7 @@ const styles = {
     background: 'rgba(16, 185, 129, 0.1)',
     color: 'var(--accent-secondary)',
     border: '1px solid rgba(16, 185, 129, 0.2)',
-    padding: '8px 16px',
+    padding: '8px 14px',
     borderRadius: '8px',
     fontSize: '13px',
     fontWeight: 600,
@@ -368,7 +466,7 @@ const styles = {
   downloadBtn: {
     background: 'linear-gradient(135deg, var(--accent-primary), #0284c7)',
     color: '#ffffff',
-    padding: '8px 16px',
+    padding: '8px 14px',
     borderRadius: '8px',
     fontSize: '13px',
     fontWeight: 600,
@@ -378,10 +476,22 @@ const styles = {
     boxShadow: '0 4px 10px rgba(56, 189, 248, 0.2)',
     textDecoration: 'none',
   },
+  alertBanner: {
+    background: 'rgba(245, 158, 11, 0.08)',
+    border: '1px solid rgba(245, 158, 11, 0.2)',
+    color: 'var(--accent-medium)',
+    fontSize: '13px',
+    padding: '10px 16px',
+    borderRadius: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    fontWeight: 500,
+  },
   diffSelect: {
-    background: 'var(--bg-tertiary)',
-    border: '1px solid var(--border-glass)',
-    color: 'var(--text-primary)',
+    background: '#f1f5f9',
+    border: '1px solid #cbd5e1',
+    color: '#334155',
     fontSize: '10px',
     fontWeight: 'bold',
     borderRadius: '4px',
@@ -390,7 +500,7 @@ const styles = {
     cursor: 'pointer',
   },
   marksInput: {
-    width: '32px',
+    width: '28px',
     border: 'none',
     borderBottom: '1px dotted #64748b',
     background: 'transparent',
@@ -400,5 +510,72 @@ const styles = {
     color: '#0f172a',
     padding: 0,
     margin: 0,
+  },
+  deleteQBtn: {
+    color: '#ef4444',
+    padding: '4px',
+    borderRadius: '4px',
+    transition: 'background 0.2s',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addQuestionRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginTop: '16px',
+    paddingTop: '10px',
+    borderTop: '1px dotted #e2e8f0',
+  },
+  addQBtn: {
+    background: '#f8fafc',
+    border: '1px solid #cbd5e1',
+    borderRadius: '6px',
+    fontSize: '10px',
+    fontWeight: 600,
+    color: '#475569',
+    padding: '4px 10px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    transition: 'all 0.2s',
+  },
+  signatureBlock: {
+    marginTop: '40px',
+    paddingTop: '20px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    borderTop: '1px double #0f172a',
+  },
+  examinerInputBlock: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '4px',
+  },
+  examinerInput: {
+    border: 'none',
+    borderBottom: '1px dotted #0f172a',
+    background: 'transparent',
+    padding: '2px 4px',
+    fontFamily: 'Times New Roman',
+    color: '#0f172a',
+    fontSize: '13px',
+  },
+  sigLineContainer: {
+    width: '200px',
+    textAlign: 'center' as const,
+  },
+  sigLine: {
+    borderBottom: '1px solid #475569',
+    marginBottom: '6px',
+  },
+  sigText: {
+    fontFamily: 'Times New Roman',
+    fontSize: '10px',
+    fontWeight: 'bold',
+    color: '#475569',
+    lineHeight: 1.3,
   },
 };
